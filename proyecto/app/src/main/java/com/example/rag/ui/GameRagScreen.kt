@@ -35,7 +35,7 @@ fun GameRagScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Vector RAG Game Assistant 🧠🎮", fontWeight = FontWeight.Bold) },
+                title = { Text("Steam Game Finder", fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer

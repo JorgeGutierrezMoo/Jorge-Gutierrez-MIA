@@ -10,7 +10,7 @@ class GameRagEngine(
 ) {
     fun ask(query: String): RagResponse {
         val allGames = repository.getAllGames()
-        val retrievedResults = retriever.retrieve(query, allGames, topK = 2)
+        val retrievedResults = retriever.retrieve(query, allGames, topK = 4)
 
         val retrievedDocs = retrievedResults.map { it.document }
         val scoresMap = retrievedResults.associate { it.document.id to it.similarityScore }
@@ -30,20 +30,7 @@ class GameRagEngine(
             return "I couldn't find any relevant games matching your query."
         }
 
-        val sb = StringBuilder()
-        sb.append("Based on Room DB vector embedding semantic retrieval for \"$query\":\n\n")
-
-        for ((index, res) in results.withIndex()) {
-            val doc = res.document
-            val confidencePercent = (res.similarityScore * 100).toInt()
-            sb.append("${index + 1}. **${doc.title}** (Semantic Match: $confidencePercent%)\n")
-            sb.append("   - **Genre**: ${doc.genre}\n")
-            sb.append("   - **Platforms**: ${doc.platform}\n")
-            sb.append("   - **Overview**: ${doc.description}\n")
-            sb.append("   - **Lore**: ${doc.lore}\n\n")
-        }
-
-        sb.append("Retrieved and synthesized from SQLite Room Database vector storage.")
-        return sb.toString()
+        val titles = results.joinToString(", ") { "${it.document.title} (${(it.similarityScore * 100).toInt()}% match)" }
+        return "Based on vector embedding semantic retrieval for \"$query\", the top 4 recommended games are: $titles. You can inspect the detailed knowledge source cards below for full overviews, genres, and lore."
     }
 }

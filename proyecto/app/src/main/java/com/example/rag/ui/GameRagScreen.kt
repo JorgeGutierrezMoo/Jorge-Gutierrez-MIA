@@ -35,7 +35,7 @@ fun GameRagScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Steam Game Finder", fontWeight = FontWeight.Bold) },
+                title = { Text("Multi-Doc Vector RAG 🧠🎮", fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -48,7 +48,7 @@ fun GameRagScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Search Input Row
             Row(
@@ -76,6 +76,22 @@ fun GameRagScreen(
                 }
             }
 
+            // Top-K Slider Adjustment Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Recommendations (Top-K): ${state.topK}", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                Slider(
+                    value = state.topK.toFloat(),
+                    onValueChange = { viewModel.onTopKChanged(it.toInt()) },
+                    valueRange = 1f..10f,
+                    steps = 8,
+                    modifier = Modifier.width(200.dp)
+                )
+            }
+
             // Quick Suggestion Chips
             Text("Semantic Query Suggestions:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
             LazyRow(
@@ -101,7 +117,7 @@ fun GameRagScreen(
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         CircularProgressIndicator()
-                        Text("Computing embeddings & cosine similarity...", style = MaterialTheme.typography.bodyMedium)
+                        Text("Retrieving chunks across 4 JSON documents...", style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             } else if (state.currentResponse == null) {
@@ -112,7 +128,7 @@ fun GameRagScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        "Enter a semantic query or tap a suggestion above to run Vector RAG!",
+                        "Enter a semantic query or adjust Top-K to run Multi-Doc RAG!",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.outline
                     )
@@ -124,7 +140,7 @@ fun GameRagScreen(
                         .weight(1f),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Answer Card
+                    // Answer Summary Card
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -135,25 +151,25 @@ fun GameRagScreen(
                                 modifier = Modifier.padding(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text("Synthesized RAG Answer", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                                Text("Synthesized RAG Summary", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                                 Text(state.currentResponse!!.answer, style = MaterialTheme.typography.bodyMedium)
                             }
                         }
                     }
 
-                    // Retrieved Sources Header
+                    // Retrieved Chunks Header
                     item {
                         Text(
-                            "Retrieved Semantic Chunks (${state.currentResponse!!.retrievedSources.size}):",
+                            "Retrieved Document Chunks (${state.currentResponse!!.retrievedSources.size}):",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold
                         )
                     }
 
-                    // Sources List
+                    // Sources List with Chunk Inspection
                     items(state.currentResponse!!.retrievedSources) { source ->
                         val similarity = state.currentResponse!!.similarityScores[source.id] ?: 0f
-                        SourceCard(source, similarity)
+                        ChunkInspectionCard(source, similarity)
                     }
                 }
             }
@@ -162,7 +178,7 @@ fun GameRagScreen(
 }
 
 @Composable
-fun SourceCard(source: GameDocument, similarityScore: Float) {
+fun ChunkInspectionCard(source: GameDocument, similarityScore: Float) {
     val percentage = (similarityScore * 100).toInt()
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -171,7 +187,7 @@ fun SourceCard(source: GameDocument, similarityScore: Float) {
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -189,10 +205,24 @@ fun SourceCard(source: GameDocument, similarityScore: Float) {
                     )
                 }
             }
-            Text("Genre: ${source.genre}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
-            Text("Platform: ${source.platform}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+            Text("Genre: ${source.genre} | Platform: ${source.platform}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+            
             Spacer(modifier = Modifier.height(2.dp))
-            Text(source.description, style = MaterialTheme.typography.bodyMedium)
+            
+            // RAG Chunk Inspection Box
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("📄 Retrieved RAG Chunk:", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Text("Overview: ${source.description}", style = MaterialTheme.typography.bodySmall)
+                    if (source.lore.isNotBlank() && source.lore != source.description) {
+                        Text("Lore: ${source.lore}", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
         }
     }
 }

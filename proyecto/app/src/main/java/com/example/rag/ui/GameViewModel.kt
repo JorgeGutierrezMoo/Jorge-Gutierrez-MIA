@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 
 data class GameUiState(
     val query: String = "",
+    val topK: Int = 4,
     val isLoading: Boolean = false,
     val currentResponse: RagResponse? = null,
     val history: List<RagResponse> = emptyList()
@@ -33,15 +34,20 @@ class GameViewModel(
         _uiState.update { it.copy(query = newQuery) }
     }
 
+    fun onTopKChanged(newTopK: Int) {
+        _uiState.update { it.copy(topK = newTopK) }
+    }
+
     fun submitQuery(queryText: String = _uiState.value.query) {
         if (queryText.isBlank()) return
 
         viewModelScope.launch {
+            val currentTopK = _uiState.value.topK
             _uiState.update { it.copy(isLoading = true, query = queryText) }
             
-            delay(400)
+            delay(300)
 
-            val response = ragEngine.ask(queryText)
+            val response = ragEngine.ask(queryText, topK = currentTopK)
 
             _uiState.update { state ->
                 state.copy(

@@ -4,43 +4,40 @@ import java.util.Locale
 import kotlin.math.sqrt
 
 object EmbeddingModel {
-    // 16-dimensional semantic embedding space for games
-    // Dimensions:
-    // 0: action, 1: rpg, 2: open_world, 3: sci_fi, 4: fantasy, 5: multiplayer,
-    // 6: survival, 7: platformer, 8: lore, 9: combat, 10: exploration, 11: dnd,
-    // 12: nintendo, 13: cyberpunk, 14: story, 15: sandbox
-    private val dimensionKeywords = listOf(
-        listOf("action", "fight", "battle", "fast"),
-        listOf("rpg", "role-playing", "character", "level", "stats"),
-        listOf("open world", "vast", "world", "explore", "map"),
-        listOf("sci-fi", "space", "future", "tech", "cyber"),
-        listOf("fantasy", "magic", "sword", "dragon", "myth"),
-        listOf("multiplayer", "co-op", "online", "friends"),
-        listOf("survival", "craft", "resource", "gather", "build"),
-        listOf("platformer", "jump", "mario", "obstacles"),
-        listOf("lore", "history", "shards", "gods", "kingdom"),
-        listOf("combat", "weapons", "boss", "action"),
-        listOf("exploration", "discover", "secrets", "adventure"),
-        listOf("dnd", "dungeons", "tabletop", "dice", "turn-based"),
-        listOf("nintendo", "switch", "zelda", "mario", "console"),
-        listOf("cyberpunk", "night city", "hack", "implants", "v"),
-        listOf("story", "slumber", "memories", "quest", "journey"),
-        listOf("sandbox", "blocks", "creativity", "mine", "open-ended")
-    )
-
     fun embed(text: String): List<Float> {
         val lowerText = text.lowercase(Locale.ROOT)
-        val vector = MutableList(dimensionKeywords.size) { 0.05f } // small baseline to avoid zero division
+        // 64-dimensional sparse semantic vector space
+        val vector = MutableList(64) { 0.0f }
+        
+        val semanticTokens = listOf(
+            "action", "rpg", "open world", "sci-fi", "fantasy", "multiplayer",
+            "survival", "platformer", "lore", "combat", "exploration", "dnd",
+            "nintendo", "cyberpunk", "story", "sandbox", "zombie", "horror",
+            "strategy", "roguelike", "card", "simulation", "racing", "fighting",
+            "shooter", "stealth", "puzzle", "indie", "classic", "anime",
+            "moba", "mmorpg", "crafting", "space", "vampire", "medieval",
+            "magical", "dungeon", "post-apocalyptic", "zombies", "co-op",
+            "tactical", "historical", "detective", "deckbuilder", "mecha",
+            "looter", "isometric", "retro", "turn-based", "mystery",
+            // Spanish gaming terms for robust multilingual support
+            "accion", "mundo abierto", "fantasia", "supervivencia", "estrategia",
+            "aventura", "terror", "zombis", "disparos", "rol"
+        )
 
-        for ((index, keywords) in dimensionKeywords.withIndex()) {
-            for (kw in keywords) {
-                if (lowerText.contains(kw)) {
-                    vector[index] += 1.0f
-                }
+        var matchedAny = false
+        for ((index, token) in semanticTokens.withIndex()) {
+            if (lowerText.contains(token)) {
+                vector[index % 64] += 2.0f
+                matchedAny = true
             }
         }
 
-        // L2 Normalization
+        // If no semantic tokens match at all, keep vector zero (orthogonal) -> cosine similarity = 0.0
+        if (!matchedAny) {
+            return vector
+        }
+
+        // L2 Normalization for matched vectors
         val norm = sqrt(vector.sumOf { (it * it).toDouble() }).toFloat()
         if (norm == 0f) return vector
         return vector.map { it / norm }

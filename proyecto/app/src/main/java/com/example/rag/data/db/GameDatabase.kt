@@ -12,7 +12,7 @@ import kotlinx.coroutines.launch
 import org.json.JSONArray
 import java.io.BufferedReader
 
-@Database(entities = [GameEntity::class], version = 2, exportSchema = false)
+@Database(entities = [GameEntity::class], version = 5, exportSchema = false)
 abstract class GameDatabase : RoomDatabase() {
 
     abstract fun gameDao(): GameDao
@@ -52,9 +52,8 @@ abstract class GameDatabase : RoomDatabase() {
                 super.onOpen(db)
                 INSTANCE?.let { database ->
                     CoroutineScope(Dispatchers.IO).launch {
-                        // Ensure database is populated if empty or missing new games
                         val dao = database.gameDao()
-                        if (dao.getCount() < 200) {
+                        if (dao.getCount() < 450) {
                             populateInitialData(dao, context)
                         }
                     }
@@ -64,44 +63,46 @@ abstract class GameDatabase : RoomDatabase() {
 
         suspend fun populateInitialData(dao: GameDao, context: Context) {
             val entities = mutableListOf<GameEntity>()
-            try {
-                val inputStream = context.assets.open("games.json")
-                val jsonString = inputStream.bufferedReader().use(BufferedReader::readText)
-                val jsonArray = JSONArray(jsonString)
+            val assetFiles = listOf("games.json", "games_1.json", "games_2.json", "games_3.json", "games_4.json")
 
-                for (i in 0 until jsonArray.length()) {
-                    val obj = jsonArray.getJSONObject(i)
-                    val id = obj.getString("id")
-                    val title = obj.getString("title")
-                    val genre = obj.getString("genre")
-                    val platform = obj.getString("platform")
-                    val releaseDate = obj.getString("releaseDate")
-                    val description = obj.getString("description")
-                    val lore = obj.getString("lore")
+            for (fileName in assetFiles) {
+                try {
+                    val inputStream = context.assets.open(fileName)
+                    val jsonString = inputStream.bufferedReader().use(BufferedReader::readText)
+                    val jsonArray = JSONArray(jsonString)
 
-                    val textToEmbed = "$title $genre $description $lore"
-                    val embedding = EmbeddingModel.embed(textToEmbed)
-                    val embeddingJson = JSONArray(embedding).toString()
+                    for (i in 0 until jsonArray.length()) {
+                        val obj = jsonArray.getJSONObject(i)
+                        val id = obj.getString("id")
+                        val title = obj.getString("title")
+                        val genre = obj.getString("genre")
+                        val platform = obj.getString("platform")
+                        val releaseDate = obj.getString("releaseDate")
+                        val description = obj.getString("description")
+                        val lore = obj.getString("lore")
 
-                    entities.add(
-                        GameEntity(
-                            id = id,
-                            title = title,
-                            genre = genre,
-                            platform = platform,
-                            releaseDate = releaseDate,
-                            description = description,
-                            lore = lore,
-                            embeddingJson = embeddingJson
+                        val textToEmbed = "$title $genre $description $lore"
+                        val embedding = EmbeddingModel.embed(textToEmbed)
+                        val embeddingJson = JSONArray(embedding).toString()
+
+                        entities.add(
+                            GameEntity(
+                                id = id,
+                                title = title,
+                                genre = genre,
+                                platform = platform,
+                                releaseDate = releaseDate,
+                                description = description,
+                                lore = lore,
+                                embeddingJson = embeddingJson
+                            )
                         )
-                    )
-                }
-            } catch (_: Exception) {
-                // fallback handled below
+                    }
+                } catch (_: Exception) {}
             }
 
             if (entities.isNotEmpty()) {
-                dao.deleteAll() // Clear stale/old data
+                dao.deleteAll()
                 dao.insertGames(entities)
             }
         }

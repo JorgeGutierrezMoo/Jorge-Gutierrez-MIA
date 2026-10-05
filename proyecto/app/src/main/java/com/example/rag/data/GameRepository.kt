@@ -4,49 +4,48 @@ import android.content.Context
 import com.example.rag.data.db.GameDatabase
 import com.example.rag.rag.EmbeddingModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 
 class GameRepository(private val context: Context? = null) {
 
-    fun getAllGames(): List<GameDocument> {
+    suspend fun getAllGames(): List<GameDocument> = withContext(Dispatchers.IO) {
         val gamesList = mutableListOf<GameDocument>()
 
         if (context != null) {
-            runBlocking(Dispatchers.IO) {
-                try {
-                    val db = GameDatabase.getDatabase(context)
-                    val dao = db.gameDao()
-                    
-                    if (dao.getCount() < 200) {
-                        GameDatabase.populateInitialData(dao, context)
-                    }
+            EmbeddingModel.init(context)
+            try {
+                val db = GameDatabase.getDatabase(context)
+                val dao = db.gameDao()
+                
+                if (dao.getCount() < 450) {
+                    GameDatabase.populateInitialData(dao, context)
+                }
 
-                    val entities = dao.getAllGames()
-                    for (entity in entities) {
-                        val embeddingList = mutableListOf<Float>()
-                        try {
-                            val jsonArray = JSONArray(entity.embeddingJson)
-                            for (i in 0 until jsonArray.length()) {
-                                embeddingList.add(jsonArray.getDouble(i).toFloat())
-                            }
-                        } catch (_: Exception) {}
+                val entities = dao.getAllGames()
+                for (entity in entities) {
+                    val embeddingList = mutableListOf<Float>()
+                    try {
+                        val jsonArray = JSONArray(entity.embeddingJson)
+                        for (i in 0 until jsonArray.length()) {
+                            embeddingList.add(jsonArray.getDouble(i).toFloat())
+                        }
+                    } catch (_: Exception) {}
 
-                        gamesList.add(
-                            GameDocument(
-                                id = entity.id,
-                                title = entity.title,
-                                genre = entity.genre,
-                                platform = entity.platform,
-                                releaseDate = entity.releaseDate,
-                                description = entity.description,
-                                lore = entity.lore,
-                                embedding = embeddingList.ifEmpty { EmbeddingModel.embed("${entity.title} ${entity.genre} ${entity.description}") }
-                            )
+                    gamesList.add(
+                        GameDocument(
+                            id = entity.id,
+                            title = entity.title,
+                            genre = entity.genre,
+                            platform = entity.platform,
+                            releaseDate = entity.releaseDate,
+                            description = entity.description,
+                            lore = entity.lore,
+                            embedding = embeddingList.ifEmpty { EmbeddingModel.embed("${entity.title} ${entity.genre} ${entity.description}") }
                         )
-                    }
-                } catch (_: Exception) {}
-            }
+                    )
+                }
+            } catch (_: Exception) {}
         }
 
         if (gamesList.isEmpty()) {
@@ -64,6 +63,6 @@ class GameRepository(private val context: Context? = null) {
             )
         }
 
-        return gamesList
+        gamesList
     }
 }

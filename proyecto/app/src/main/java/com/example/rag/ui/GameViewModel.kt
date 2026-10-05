@@ -17,6 +17,7 @@ data class GameUiState(
     val query: String = "",
     val topK: Int = 4,
     val isLoading: Boolean = false,
+    val isInitializing: Boolean = true,
     val currentResponse: RagResponse? = null,
     val history: List<RagResponse> = emptyList()
 )
@@ -29,6 +30,16 @@ class GameViewModel(
 
     private val _uiState = MutableStateFlow(GameUiState())
     val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
+
+    init {
+        // Pre-load / initialize database in background on startup
+        viewModelScope.launch {
+            try {
+                ragEngine.ask("Elden Ring", topK = 1)
+            } catch (_: Exception) {}
+            _uiState.update { it.copy(isInitializing = false) }
+        }
+    }
 
     fun onQueryChanged(newQuery: String) {
         _uiState.update { it.copy(query = newQuery) }
@@ -45,7 +56,7 @@ class GameViewModel(
             val currentTopK = _uiState.value.topK
             _uiState.update { it.copy(isLoading = true, query = queryText) }
             
-            delay(300)
+            delay(200)
 
             val response = ragEngine.ask(queryText, topK = currentTopK)
 

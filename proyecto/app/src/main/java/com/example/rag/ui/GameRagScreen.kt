@@ -25,17 +25,17 @@ fun GameRagScreen(
     val state by viewModel.uiState.collectAsState()
 
     val suggestions = listOf(
-        "Magic swords and dragons",
-        "Open world exploration",
-        "Nintendo Switch platformer",
-        "Cyberpunk futuristic tech",
-        "Turn-based tabletop RPG"
+        "Action RPG open world",
+        "Survival crafting underwater",
+        "Co-op zombie shooter",
+        "Sci-fi space exploration",
+        "Turn-based JRPG story"
     )
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Multi-Doc Vector RAG 🧠🎮", fontWeight = FontWeight.Bold) },
+                title = { Text("Steam game recomendations RAG", fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -60,7 +60,7 @@ fun GameRagScreen(
                     value = state.query,
                     onValueChange = { viewModel.onQueryChanged(it) },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Ask semantically (e.g., dragons, tech)...") },
+                    placeholder = { Text("What are you looking for?") },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp)
                 )

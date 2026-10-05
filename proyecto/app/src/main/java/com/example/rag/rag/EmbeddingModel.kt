@@ -1,12 +1,79 @@
 package com.example.rag.rag
 
+import android.content.Context
+import android.util.Log
+import com.google.mediapipe.tasks.core.BaseOptions
+import com.google.mediapipe.tasks.text.textembedder.TextEmbedder
 import java.util.Locale
 import kotlin.math.sqrt
 
 object EmbeddingModel {
+    private const val TAG = "EmbeddingModel"
+    private var textEmbedder: TextEmbedder? = null
+    private var isInitialized = false
+
+    var lastUsedMediaPipe: Boolean = false
+        private set
+
+    fun init(context: Context) {
+        if (isInitialized) return
+        isInitialized = true
+
+        val modelNames = listOf("text_embedder.tflite", "universal_sentence_encoder.tflite")
+        for (modelName in modelNames) {
+            try {
+                val baseOptions = BaseOptions.builder()
+                    .setModelAssetPath(modelName)
+                    .build()
+                val options = TextEmbedder.TextEmbedderOptions.builder()
+                    .setBaseOptions(baseOptions)
+                    .build()
+                textEmbedder = TextEmbedder.createFromOptions(context, options)
+                Log.i(TAG, "MediaPipe TextEmbedder initialized successfully with $modelName")
+                return
+            } catch (e: Throwable) {
+                textEmbedder = null
+                Log.w(TAG, "MediaPipe TextEmbedder failed with $modelName: ${e.message}")
+            }
+        }
+        Log.i(TAG, "MediaPipe TFLite model not found in assets, using pure Kotlin semantic fallback.")
+    }
+
     fun embed(text: String): List<Float> {
+        try {
+            textEmbedder?.let { embedder ->
+                val result = embedder.embed(text)
+                val embeddingResult = result.embeddingResult()
+                if (embeddingResult != null && embeddingResult.embeddings().isNotEmpty()) {
+                    val floatEmb = embeddingResult.embeddings()[0].floatEmbedding()
+                    val rawArray = floatEmb as? FloatArray ?: try {
+                        floatEmb.javaClass.getMethod("floatArray").invoke(floatEmb) as? FloatArray
+                    } catch (_: Throwable) {
+                        null
+                    }
+
+                    if (rawArray != null) {
+                        val floatList = mutableListOf<Float>()
+                        for (f in rawArray) {
+                            floatList.add(f)
+                        }
+                        if (floatList.isNotEmpty()) {
+                            lastUsedMediaPipe = true
+                            return floatList
+                        }
+                    }
+                }
+            }
+        } catch (e: Throwable) {
+            Log.d(TAG, "MediaPipe embed execution error: ${e.message}")
+        }
+
+        lastUsedMediaPipe = false
+        return generateSemanticFallbackEmbedding(text)
+    }
+
+    private fun generateSemanticFallbackEmbedding(text: String): List<Float> {
         val lowerText = text.lowercase(Locale.ROOT)
-        // 64-dimensional sparse semantic vector space
         val vector = MutableList(64) { 0.0f }
         
         val semanticTokens = listOf(
@@ -19,7 +86,6 @@ object EmbeddingModel {
             "magical", "dungeon", "post-apocalyptic", "zombies", "co-op",
             "tactical", "historical", "detective", "deckbuilder", "mecha",
             "looter", "isometric", "retro", "turn-based", "mystery",
-            // Spanish gaming terms for robust multilingual support
             "accion", "mundo abierto", "fantasia", "supervivencia", "estrategia",
             "aventura", "terror", "zombis", "disparos", "rol"
         )
@@ -32,12 +98,8 @@ object EmbeddingModel {
             }
         }
 
-        // If no semantic tokens match at all, keep vector zero (orthogonal) -> cosine similarity = 0.0
-        if (!matchedAny) {
-            return vector
-        }
+        if (!matchedAny) return vector
 
-        // L2 Normalization for matched vectors
         val norm = sqrt(vector.sumOf { (it * it).toDouble() }).toFloat()
         if (norm == 0f) return vector
         return vector.map { it / norm }

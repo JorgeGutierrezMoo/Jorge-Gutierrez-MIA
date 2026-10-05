@@ -8,7 +8,7 @@ class GameRagEngine(
     private val repository: GameRepository = GameRepository(),
     private val retriever: VectorGameRetriever = VectorGameRetriever()
 ) {
-    fun ask(query: String, topK: Int = 4): RagResponse {
+    suspend fun ask(query: String, topK: Int = 4): RagResponse {
         val allGames = repository.getAllGames()
         val retrievedResults = retriever.retrieve(query, allGames, topK = topK)
 
@@ -26,8 +26,7 @@ class GameRagEngine(
     }
 
     private fun synthesizeAnswer(query: String, results: List<RetrievedResult>): String {
-        // Abstention / anti-hallucination check: if top similarity score is below 30%, abstain
-        if (results.isEmpty() || results[0].similarityScore < 0.30f) {
+        if (results.isEmpty() || results[0].similarityScore < 0.28f) {
             return "I cannot answer this question because it is not covered by the game knowledge base corpus. I must abstain rather than invent or hallucinate information."
         }
 

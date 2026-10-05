@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.rag.data.GameRepository
 import com.example.rag.data.RagResponse
 import com.example.rag.rag.GameRagEngine
+import com.example.rag.rag.GemmaLlmManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,15 +27,19 @@ class GameViewModel(
     application: Application
 ) : AndroidViewModel(application) {
 
-    private val ragEngine = GameRagEngine(GameRepository(application))
+    private val gemmaManager = GemmaLlmManager(application)
+    private val ragEngine = GameRagEngine(
+        repository = GameRepository(application),
+        gemmaManager = gemmaManager
+    )
 
     private val _uiState = MutableStateFlow(GameUiState())
     val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
 
     init {
-        // Pre-load / initialize database in background on startup
         viewModelScope.launch {
             try {
+                gemmaManager.init()
                 ragEngine.ask("Elden Ring", topK = 1)
             } catch (_: Exception) {}
             _uiState.update { it.copy(isInitializing = false) }

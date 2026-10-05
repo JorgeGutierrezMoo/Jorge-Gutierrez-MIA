@@ -1,6 +1,7 @@
 package com.example.rag.rag
 
 import com.example.rag.data.GameDocument
+import java.text.Normalizer
 import java.util.Locale
 
 data class RetrievedResult(
@@ -9,22 +10,68 @@ data class RetrievedResult(
 )
 
 class VectorGameRetriever {
+
+    private fun normalizeText(text: String): String {
+        val lower = text.lowercase(Locale.ROOT)
+        return Normalizer.normalize(lower, Normalizer.Form.NFD)
+            .replace(Regex("\\p{InCombiningDiacriticalMarks}+"), "")
+    }
+
+    private fun expandSpanishQuery(query: String): String {
+        val normalized = normalizeText(query)
+        val synonyms = mapOf(
+            "accion" to "action",
+            "mundo abierto" to "open world",
+            "fantasia" to "fantasy",
+            "supervivencia" to "survival",
+            "estrategia" to "strategy",
+            "aventura" to "adventure",
+            "terror" to "horror",
+            "miedo" to "horror",
+            "zombi" to "zombie",
+            "zombis" to "zombies",
+            "disparos" to "shooter",
+            "tiros" to "shooter",
+            "rol" to "rpg",
+            "carreras" to "racing",
+            "autos" to "racing",
+            "coches" to "racing",
+            "pelea" to "fighting",
+            "lucha" to "fighting",
+            "cartas" to "card deckbuilder",
+            "espacio" to "space sci-fi",
+            "ciencia ficcion" to "sci-fi",
+            "construccion" to "crafting sandbox",
+            "cooperativo" to "co-op",
+            "multijugador" to "multiplayer"
+        )
+
+        var expanded = normalized
+        for ((es, en) in synonyms) {
+            if (normalized.contains(es)) {
+                expanded += " $en"
+            }
+        }
+        return expanded
+    }
+
     fun retrieve(query: String, documents: List<GameDocument>, topK: Int = 4): List<RetrievedResult> {
         if (query.isBlank() || documents.isEmpty()) {
             return emptyList()
         }
 
-        val queryLower = query.lowercase(Locale.ROOT)
-        val queryTokens = queryLower.split(Regex("\\s+")).filter { it.length > 2 } // ignore small stop words
+        val expandedQuery = expandSpanishQuery(query)
+        val queryLower = normalizeText(expandedQuery)
+        val queryTokens = queryLower.split(Regex("\\s+")).filter { it.length > 2 }
 
         val scoredDocs = documents.map { doc ->
-            val titleLower = doc.title.lowercase(Locale.ROOT)
-            val genreLower = doc.genre.lowercase(Locale.ROOT)
-            val descLower = doc.description.lowercase(Locale.ROOT)
-            val loreLower = doc.lore.lowercase(Locale.ROOT)
+            val titleLower = normalizeText(doc.title)
+            val genreLower = normalizeText(doc.genre)
+            val descLower = normalizeText(doc.description)
+            val loreLower = normalizeText(doc.lore)
 
             // 1. Semantic Embedding Cosine Similarity (0.0 to 1.0)
-            val queryEmb = EmbeddingModel.embed(query)
+            val queryEmb = EmbeddingModel.embed(expandedQuery)
             val docEmb = if (doc.embedding.isNotEmpty()) {
                 doc.embedding
             } else {
@@ -42,8 +89,8 @@ class VectorGameRetriever {
 
             val tokenMatchRatio = if (queryTokens.isNotEmpty()) matchedTokensCount.toFloat() / queryTokens.size else 0f
 
-            // 3. Strict relevance filtering: if no tokens match and cosine is low, score remains very low
-            val finalScore = if (queryTokens.isNotEmpty() && matchedTokensCount == 0 && cosine < 0.30f) {
+            // 3. Strict relevance filtering
+            val finalScore = if (queryTokens.isNotEmpty() && matchedTokensCount == 0 && cosine < 0.28f) {
                 cosine * 0.1f
             } else {
                 (cosine * 0.6f + tokenMatchRatio * 0.4f).coerceIn(0.0f, 1.0f)
@@ -56,7 +103,7 @@ class VectorGameRetriever {
         }
 
         return scoredDocs
-            .filter { it.similarityScore >= 0.28f } // Strict threshold: filter out anything below 28% match
+            .filter { it.similarityScore >= 0.28f }
             .sortedByDescending { it.similarityScore }
             .take(topK)
     }

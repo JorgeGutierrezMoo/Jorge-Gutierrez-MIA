@@ -6,7 +6,8 @@ import com.example.rag.data.RagResponse
 
 class GameRagEngine(
     private val repository: GameRepository = GameRepository(),
-    private val retriever: VectorGameRetriever = VectorGameRetriever()
+    private val retriever: VectorGameRetriever = VectorGameRetriever(),
+    private val gemmaManager: GemmaLlmManager? = null
 ) {
     suspend fun ask(query: String, topK: Int = 4): RagResponse {
         val allGames = repository.getAllGames()
@@ -15,22 +16,33 @@ class GameRagEngine(
         val retrievedDocs = retrievedResults.map { it.document }
         val scoresMap = retrievedResults.associate { it.document.id to it.similarityScore }
 
-        val answer = synthesizeAnswer(query, retrievedResults)
+        if (retrievedResults.isEmpty() || retrievedResults[0].similarityScore < 0.28f) {
+            val abstentionMsg = "No puedo responder a esta pregunta porque no está cubierta en el corpus de la base de conocimientos de juegos. Debo abstenerme en lugar de inventar o alucinar información."
+            return RagResponse(
+                query = query,
+                retrievedSources = emptyList(),
+                similarityScores = scoresMap,
+                answer = abstentionMsg
+            )
+        }
+
+        val chunksText = retrievedResults.joinToString("\n\n") { res ->
+            "Juego: ${res.document.title}\nGénero: ${res.document.genre}\nDescripción: ${res.document.description}\nLore: ${res.document.lore}"
+        }
+
+        val gemmaAnswer = gemmaManager?.generateGroundedAnswer(query, chunksText)
+        val answer = gemmaAnswer ?: synthesizeAnswer(query, retrievedResults)
 
         return RagResponse(
             query = query,
-            retrievedSources = if (answer.contains("cannot answer") || answer.contains("abstain")) emptyList() else retrievedDocs,
+            retrievedSources = retrievedDocs,
             similarityScores = scoresMap,
             answer = answer
         )
     }
 
     private fun synthesizeAnswer(query: String, results: List<RetrievedResult>): String {
-        if (results.isEmpty() || results[0].similarityScore < 0.28f) {
-            return "I cannot answer this question because it is not covered by the game knowledge base corpus. I must abstain rather than invent or hallucinate information."
-        }
-
-        val titles = results.joinToString(", ") { "${it.document.title} (${(it.similarityScore * 100).toInt()}% match)" }
-        return "Based on vector embedding semantic retrieval for \"$query\", the top ${results.size} recommended games are: $titles. Inspect the retrieved text chunks in the source cards below."
+        val titles = results.joinToString(", ") { "${it.document.title} (${(it.similarityScore * 100).toInt()}% de coincidencia)" }
+        return "Basado en la búsqueda semántica vectorial para \"$query\", los ${results.size} juegos principales recomendados son: $titles. Puedes inspeccionar los chunks de texto recuperados en las tarjetas a continuación."
     }
 }

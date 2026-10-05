@@ -25,11 +25,11 @@ fun GameRagScreen(
     val state by viewModel.uiState.collectAsState()
 
     val suggestions = listOf(
-        "Action RPG open world",
-        "Survival crafting underwater",
-        "Co-op zombie shooter",
-        "Sci-fi space exploration",
-        "Turn-based JRPG story"
+        "Action RPG mundo abierto",
+        "Supervivencia y construcción submarina",
+        "Shooter de zombis cooperativo",
+        "Exploración espacial de ciencia ficción",
+        "JRPG por turnos con historia"
     )
 
     Scaffold(
@@ -60,7 +60,7 @@ fun GameRagScreen(
                     value = state.query,
                     onValueChange = { viewModel.onQueryChanged(it) },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("What are you looking for?") },
+                    placeholder = { Text("¿Qué estás buscando?") },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp)
                 )
@@ -70,9 +70,9 @@ fun GameRagScreen(
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.height(56.dp)
                 ) {
-                    Icon(Icons.Default.Search, contentDescription = "Search")
+                    Icon(Icons.Default.Search, contentDescription = "Buscar")
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Search")
+                    Text("Buscar")
                 }
             }
 
@@ -82,7 +82,7 @@ fun GameRagScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Recommendations (Top-K): ${state.topK}", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                Text("Recomendaciones (Top-K): ${state.topK}", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
                 Slider(
                     value = state.topK.toFloat(),
                     onValueChange = { viewModel.onTopKChanged(it.toInt()) },
@@ -93,7 +93,7 @@ fun GameRagScreen(
             }
 
             // Quick Suggestion Chips
-            Text("Semantic Query Suggestions:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+            Text("Sugerencias de Búsqueda Semántica:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -117,7 +117,7 @@ fun GameRagScreen(
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         CircularProgressIndicator()
-                        Text("Retrieving chunks across 4 JSON documents...", style = MaterialTheme.typography.bodyMedium)
+                        Text("Recuperando chunks en 5 documentos JSON...", style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             } else if (state.currentResponse == null) {
@@ -128,7 +128,7 @@ fun GameRagScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        "Enter a semantic query or adjust Top-K to run Multi-Doc RAG!",
+                        "¡Ingresa una consulta semántica o ajusta Top-K para ejecutar el RAG!",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.outline
                     )
@@ -151,7 +151,7 @@ fun GameRagScreen(
                                 modifier = Modifier.padding(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text("Synthesized RAG Summary", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                                Text("Resumen RAG Sintetizado", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                                 Text(state.currentResponse!!.answer, style = MaterialTheme.typography.bodyMedium)
                             }
                         }
@@ -159,11 +159,13 @@ fun GameRagScreen(
 
                     // Retrieved Chunks Header
                     item {
-                        Text(
-                            "Retrieved Document Chunks (${state.currentResponse!!.retrievedSources.size}):",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
+                        if (state.currentResponse!!.retrievedSources.isNotEmpty()) {
+                            Text(
+                                "Chunks de Documentos Recuperados (${state.currentResponse!!.retrievedSources.size}):",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
 
                     // Sources List with Chunk Inspection
@@ -189,23 +191,26 @@ fun ChunkInspectionCard(source: GameDocument, similarityScore: Float) {
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
+            Text(source.title, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.fillMaxWidth())
+            
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(source.title, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text("Género: ${source.genre} | Plataforma: ${source.platform}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline, modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.width(8.dp))
                 Badge(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 ) {
                     Text(
-                        "Match: $percentage%",
+                        "Coincidencia: $percentage%",
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
             }
-            Text("Genre: ${source.genre} | Platform: ${source.platform}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
             
             Spacer(modifier = Modifier.height(2.dp))
             
@@ -216,10 +221,10 @@ fun ChunkInspectionCard(source: GameDocument, similarityScore: Float) {
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("📄 Retrieved RAG Chunk:", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                    Text("Overview: ${source.description}", style = MaterialTheme.typography.bodySmall)
+                    Text("📄 Chunk RAG Recuperado:", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Text("Resumen: ${source.description}", style = MaterialTheme.typography.bodySmall)
                     if (source.lore.isNotBlank() && source.lore != source.description) {
-                        Text("Lore: ${source.lore}", style = MaterialTheme.typography.bodySmall)
+                        Text("Historia / Lore: ${source.lore}", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }

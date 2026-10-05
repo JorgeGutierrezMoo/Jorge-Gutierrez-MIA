@@ -168,7 +168,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ### Paso 4: Cómo Probar las Funcionalidades RAG en la App
 
-1. **Abrir la App**: Busca la aplicación **`rag`** en tu teléfono y ábrela.
+1. **Abrir la App**: Descargar aquí: https://alumnosuady-my.sharepoint.com/:u:/g/personal/a10003451_alumnos_uady_mx/IQA50uTrvpbvQL58Yi5-ADiZAe_76RZSUIoUEyDLYie8B3w?e=cMM45M
 2. **Prueba de Búsqueda Semántica**:
    - Escribe en el campo de texto: `"juegos de supervivencia submarina"` y presiona **Buscar**.
    - Observa cómo recupera juegos relevantes como **Subnautica** con su porcentaje de coincidencia.
@@ -180,4 +180,10 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
    - Escribe una consulta totalmente fuera de dominio, como: `"¿Cómo preparar un pastel de chocolate?"` o `"receta de cocina"`.
    - Verifica cómo el sistema responde absteniéndose explícitamente sin inventar juegos.
 
+## Evidencias de posibles respuestas (incluso en las sugerencias)
+
+![img_1.png](img_1.png)
 ![img.png](img.png)
+![img_2.png](img_2.png)
+![img_3.png](img_3.png)
+![img_4.png](img_4.png)
